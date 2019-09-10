@@ -3,6 +3,7 @@ import posix_ipc
 import mmap
 import os
 import random
+import time
 
 """
 ========================================================================================
@@ -146,10 +147,15 @@ def unroll (args, func, results, method="process"):
             os.waitpid(child, 0)
             
     else:
+        threads = []
         for i in range(len(args)):
             arg = args[i]
             th = threading.Thread(target=func, args=(*arg, results))
+            threads.append(th)
             th.start()
+
+        for th in threads:
+            th.join()
 
 """
 =======================================================
@@ -258,14 +264,7 @@ def print_matrix (mtx):
     print('\t|\n|\t'.join(['\t'.join([str(cell) for cell in row]) for row in mtx]), end='')
     print('\t|')
 
-def get_matrix (mem):
-    mtx = [[0 for i in range(MATRIX_SIZE)] for i in range(MATRIX_SIZE)]
 
-    for i in range(MATRIX_SIZE):
-        for j in range(MATRIX_SIZE):
-            mtx[i][j] = read_from_memory(mem, i, j)
-
-    return mtx
 
 """
 .-----.---------------------.
@@ -280,12 +279,14 @@ def get_matrix (mem):
 """
 
 def write_to_memory (val, mem, i, j):
+    # 2D -> 1D
     k = (i * MATRIX_SIZE + j) * 24
 
     mem.seek(k)
     semaphore.acquire()
     mem.write(val.to_bytes(24, byteorder='big'))
     semaphore.release()
+
 
 """
 .--------.------------------------------.
@@ -310,6 +311,15 @@ def read_from_memory (mem, i, j):
 
     return val
 
+def get_matrix (mem):
+    mtx = [[0 for i in range(MATRIX_SIZE)] for i in range(MATRIX_SIZE)]
+
+    for i in range(MATRIX_SIZE):
+        for j in range(MATRIX_SIZE):
+            mtx[i][j] = read_from_memory(mem, i, j)
+
+    return mtx
+    
 """
 =================================
 
@@ -327,9 +337,31 @@ def read_from_memory (mem, i, j):
 # GENERATE TWO RANDOM MATRICES
 MATRIX_SIZE = 3
 MAX_VALUE = 10
+N_MATRICES = 2
 
 matA = random_matrix(MATRIX_SIZE, MAX_VALUE)
 matB = random_matrix(MATRIX_SIZE, MAX_VALUE)
+
+seq_add_time = 0
+seq_prod_time = 0
+pro_add_time = 0
+pro_prod_time = 0
+thr_add_time = 0
+thr_prod_time = 0
+
+# SEQUENTIAL ADDITION
+
+init_time = time.time()
+sum_matrix(matA, matB)
+end_time = time.time()
+seq_add_time = float(end_time - init_time)
+
+# SEQUENTIAL PRODUCT
+
+init_time = time.time()
+prod_matrix(matA, matB)
+end_time = time.time()
+seq_prod_time = float(end_time - init_time)
 
 # PRINT BOTH INITIAL MATRICES
 print("""
@@ -373,7 +405,11 @@ for k in range(MATRIX_SIZE * MATRIX_SIZE):
     mapped_memory.write(int(0).to_bytes(24, byteorder='big'))
 
 args = generate_add_args(matA, matB)
+init_time = time.time()
 unroll(args, add_p, mapped_memory, "process")
+end_time = time.time()
+
+pro_add_time = end_time - init_time
 
 print("""
  ______     _____     _____     __     ______   __     ______     __   __    
@@ -399,12 +435,13 @@ for k in range(MATRIX_SIZE * MATRIX_SIZE):
     mapped_memory.write(int(0).to_bytes(24, byteorder='big'))
 
 args = generate_prod_args(matA, matB)
+init_time = time.time()
 unroll(args, prod_p, mapped_memory)
+end_time = time.time()
+pro_prod_time = end_time - init_time
 
 matC = get_matrix(mapped_memory)
 print_matrix(matC)
-
-
 
 print(""" 
   _______   _    _   _____    ______              _____  
@@ -425,7 +462,10 @@ print("""
 
 matC = [[0 for i in range(MATRIX_SIZE)] for i in range(MATRIX_SIZE)]
 args = generate_add_args(matA, matB)
+init_time = time.time()
 unroll(args, add_t, matC, "thread")
+end_time = time.time()
+thr_add_time = end_time - init_time
 print_matrix(matC)
 
 print("""
@@ -438,5 +478,53 @@ print("""
 
 matC = [[0 for i in range(MATRIX_SIZE)] for i in range(MATRIX_SIZE)]
 args = generate_prod_args(matA, matB)
+init_time = time.time()
 unroll(args, prod_t, matC, "thread")
+end_time = time.time()
+thr_prod_time = end_time - init_time
 print_matrix(matC)
+
+print("""
+  _______   _____   __  __   ______    _____ 
+ |__   __| |_   _| |  \/  | |  ____|  / ____|
+    | |      | |   | \  / | | |__    | (___  
+    | |      | |   | |\/| | |  __|    \___ \ 
+    | |     _| |_  | |  | | | |____   ____) |
+    |_|    |_____| |_|  |_| |______| |_____/ 
+""")
+
+print("# SEQUENTIAL")
+print("ADDITION:\t" + str(round(seq_add_time, 10)))
+print("PRODUCT:\t" + str(round(seq_prod_time, 10)))
+
+print("# PROCESS")
+print("ADDITION:\t" + str(round(pro_add_time, 10)))
+print("PRODUCT:\t" + str(round(pro_prod_time, 10)))
+
+print("# THREAD")
+print("ADDITION:\t" + str(round(thr_add_time, 10)))
+print("PRODUCT:\t" + str(round(thr_prod_time, 10)))
+
+print("\n# N MATRICES")
+
+matrices = []
+for i in range(N_MATRICES):
+    curMtx = random_matrix(MATRIX_SIZE, MAX_VALUE)
+    matrices.append(curMtx)
+    print_matrix(curMtx)
+    print()
+
+auxMtx = matrices[0]
+
+for i in range(1, len(matrices)):
+    mapped_memory.seek(0)
+    for k in range(MATRIX_SIZE * MATRIX_SIZE):
+        mapped_memory.write(int(0).to_bytes(24, byteorder='big'))
+
+    args = generate_prod_args(auxMtx, matrices[i])
+    unroll(args, prod_p, mapped_memory)
+
+    auxMtx = get_matrix(mapped_memory)
+
+print("\nRESULT")
+print_matrix(auxMtx)

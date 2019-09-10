@@ -512,27 +512,3 @@ print("PRODUCT:\t" + str(round(pro_prod_time, 5)))
 print("# THREAD")
 print("ADDITION:\t" + str(round(thr_add_time, 5)))
 print("PRODUCT:\t" + str(round(thr_prod_time, 5)))
-
-print("\n# N MATRICES")
-
-matrices = []
-for i in range(N_MATRICES):
-    curMtx = random_matrix(MATRIX_SIZE, MAX_VALUE)
-    matrices.append(curMtx)
-    print_matrix(curMtx)
-    print()
-
-auxMtx = matrices[0]
-
-for i in range(1, len(matrices)):
-    mapped_memory.seek(0)
-    for k in range(MATRIX_SIZE * MATRIX_SIZE):
-        mapped_memory.write(int(0).to_bytes(24, byteorder='big'))
-
-    args = generate_prod_args(auxMtx, matrices[i])
-    unroll(args, prod_p, mapped_memory)
-
-    auxMtx = get_matrix(mapped_memory)
-
-print("\nRESULT")
-print_matrix(auxMtx)

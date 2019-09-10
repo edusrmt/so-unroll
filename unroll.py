@@ -311,6 +311,14 @@ def read_from_memory (mem, i, j):
 
     return val
 
+"""
+.--------.--------------------------------.
+|  mem   |         Mapped memory          |
+:--------+--------------------------------:
+| RETURN | Matrix stored in mapped memory |
+'--------'--------------------------------'
+"""
+
 def get_matrix (mem):
     mtx = [[0 for i in range(MATRIX_SIZE)] for i in range(MATRIX_SIZE)]
 
@@ -494,16 +502,16 @@ print("""
 """)
 
 print("# SEQUENTIAL")
-print("ADDITION:\t" + str(round(seq_add_time, 10)))
-print("PRODUCT:\t" + str(round(seq_prod_time, 10)))
+print("ADDITION:\t" + str(round(seq_add_time, 5)))
+print("PRODUCT:\t" + str(round(seq_prod_time, 5)))
 
 print("# PROCESS")
-print("ADDITION:\t" + str(round(pro_add_time, 10)))
-print("PRODUCT:\t" + str(round(pro_prod_time, 10)))
+print("ADDITION:\t" + str(round(pro_add_time, 5)))
+print("PRODUCT:\t" + str(round(pro_prod_time, 5)))
 
 print("# THREAD")
-print("ADDITION:\t" + str(round(thr_add_time, 10)))
-print("PRODUCT:\t" + str(round(thr_prod_time, 10)))
+print("ADDITION:\t" + str(round(thr_add_time, 5)))
+print("PRODUCT:\t" + str(round(thr_prod_time, 5)))
 
 print("\n# N MATRICES")
 
